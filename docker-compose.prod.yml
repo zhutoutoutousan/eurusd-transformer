@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # Production main application service
+  eurusd-transformer:
+    build: .
+    container_name: eurusd-transformer-prod
+    volumes:
+      - eurusd_data:/app/data
+      - eurusd_models:/app/models
+      - eurusd_logs:/app/logs
+      - ./config:/app/config:ro
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "6006:6006"
+    command: python scripts/example.py
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  # Production training service
+  training:
+    build: .
+    container_name: eurusd-transformer-training-prod
+    volumes:
+      - eurusd_data:/app/data
+      - eurusd_models:/app/models
+      - eurusd_logs:/app/logs
+      - ./config:/app/config:ro
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONUNBUFFERED=1
+    command: python scripts/train.py --timeframe 1h --num-epochs 100 --batch-size 32 --learning-rate 0.001
+    profiles:
+      - training
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
+
+  # Production prediction service
+  prediction:
+    build: .
+    container_name: eurusd-transformer-prediction-prod
+    volumes:
+      - eurusd_data:/app/data
+      - eurusd_models:/app/models
+      - ./config:/app/config:ro
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONUNBUFFERED=1
+    command: python scripts/predict.py --timeframe 1h --continuous --interval 300
+    profiles:
+      - prediction
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Production TensorBoard service
+  tensorboard:
+    build: .
+    container_name: eurusd-transformer-tensorboard-prod
+    volumes:
+      - eurusd_logs:/app/logs
+    ports:
+      - "6006:6006"
+    command: tensorboard --logdir=/app/logs --host=0.0.0.0 --port=6006
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+volumes:
+  eurusd_data:
+    driver: local
+  eurusd_models:
+    driver: local
+  eurusd_logs:
+    driver: local
+
+networks:
+  default:
+    name: eurusd-transformer-prod-network
