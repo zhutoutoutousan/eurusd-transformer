@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Main application service
+  eurusd-transformer:
+    build: .
+    container_name: eurusd-transformer-app
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0  # Set to -1 to disable GPU
+    ports:
+      - "6006:6006"  # TensorBoard
+    command: python scripts/example.py
+    restart: unless-stopped
+
+  # Training service
+  training:
+    build: .
+    container_name: eurusd-transformer-training
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+    command: python scripts/train.py --timeframe 1h --num-epochs 100 --batch-size 32 --learning-rate 0.001
+    profiles:
+      - training
+
+  # Data download service
+  download-data:
+    build: .
+    container_name: eurusd-transformer-download
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - PYTHONPATH=/app
+    command: python scripts/download_data.py --timeframes 5m,15m,30m,1h,1d,1wk --start-date 2020-01-01 --end-date 2024-12-31
+    profiles:
+      - data
+
+  # Prediction service
+  prediction:
+    build: .
+    container_name: eurusd-transformer-prediction
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./config:/app/config
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+    command: python scripts/predict.py --timeframe 1h --continuous --interval 300
+    profiles:
+      - prediction
+
+  # Jupyter notebook service (optional)
+  jupyter:
+    build: .
+    container_name: eurusd-transformer-jupyter
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./notebooks:/app/notebooks
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+    ports:
+      - "8888:8888"
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+    profiles:
+      - jupyter
+
+  # TensorBoard service (optional)
+  tensorboard:
+    build: .
+    container_name: eurusd-transformer-tensorboard
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "6006:6006"
+    command: tensorboard --logdir=/app/logs --host=0.0.0.0 --port=6006
+    profiles:
+      - monitoring
+
+networks:
+  default:
+    name: eurusd-transformer-network

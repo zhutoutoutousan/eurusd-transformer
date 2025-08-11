@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Override for development
+  eurusd-transformer:
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1  # Disable GPU for development
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./scripts:/app/scripts  # Mount scripts for development
+      - ./utils:/app/utils      # Mount utils for development
+      - ./models:/app/models    # Mount models for development
+
+  training:
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1  # Disable GPU for development
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./scripts:/app/scripts
+      - ./utils:/app/utils
+      - ./models:/app/models
+
+  prediction:
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1  # Disable GPU for development
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./config:/app/config
+      - ./scripts:/app/scripts
+      - ./utils:/app/utils
+      - ./models:/app/models
+
+  jupyter:
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1  # Disable GPU for development
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./notebooks:/app/notebooks
+      - ./scripts:/app/scripts
+      - ./utils:/app/utils
+      - ./models:/app/models
